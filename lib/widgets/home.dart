@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:validators/validators.dart' as validator;
 import 'package:validators/sanitizers.dart' as sanitizer;
@@ -27,7 +26,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _controller.value = TextEditingValue(
       text: _newValue,
       selection: TextSelection.fromPosition(
-        TextPosition(offset: _controller.selection.base.offset != _newValue.length ? _controller.selection.base.offset : _newValue.length),
+        TextPosition(offset: _controller.selection.base.offset < _newValue.length ? _controller.selection.base.offset : _newValue.length),
       ),
     );
   }
