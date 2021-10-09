@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ourtube/widgets/home.dart';
 import 'package:flutter/foundation.dart';
+import 'package:ourtube/widgets/setup.dart';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   runApp(const MyApp());
@@ -13,13 +15,13 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
   static Future<Directory?>? _appFiles;
-
   // This widget is the root of your application.
+
   @override
   Widget build(BuildContext context) {
     switch(Theme.of(context).platform) {
       case TargetPlatform.android:
-        // TODO: Handle this case.
+        _appFiles = getApplicationDocumentsDirectory();
         break;
       case TargetPlatform.fuchsia:
         throw UnsupportedError("FuchsiaOS is an unsupported platform");
@@ -39,7 +41,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: isInstalled() ? const MyHomePage(title: 'Home Page') : const SetupPage(title: 'Setup'),
     );
+  }
+
+  bool isInstalled() {
+    String path = "";
+    _appFiles!.then((value) => path = value!.path);
+    return Directory(p.join(path, '.ourtube')).existsSync();
   }
 }

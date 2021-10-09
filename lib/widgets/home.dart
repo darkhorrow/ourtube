@@ -21,6 +21,12 @@ class _MyHomePageState extends State<MyHomePage> {
     _controller.addListener(_checkUrl);
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _trimInput(String input) {
     final String _newValue = sanitizer.trim(_controller.text);
     _controller.value = TextEditingValue(
