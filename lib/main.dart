@@ -8,6 +8,8 @@ import 'package:ourtube/widgets/setup.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -36,6 +38,9 @@ class MyApp extends StatelessWidget {
         break;
     }
 
+    var connectivityResult = Connectivity().checkConnectivity();
+    connectivityResult.then((connection) => downloadFiles(connection));
+
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
@@ -49,5 +54,22 @@ class MyApp extends StatelessWidget {
     String path = "";
     _appFiles!.then((value) => path = value!.path);
     return Directory(p.join(path, '.ourtube')).existsSync();
+  }
+
+  void downloadFiles(ConnectivityResult connectionStatus) {
+    switch(connectionStatus) {
+      case ConnectivityResult.wifi:
+        // TODO: Handle this case.
+        break;
+      case ConnectivityResult.ethernet:
+        // TODO: Handle this case.
+        break;
+      case ConnectivityResult.mobile:
+        // TODO: Handle this case.
+        break;
+      case ConnectivityResult.none:
+        // TODO: Handle this case.
+        break;
+    }
   }
 }
