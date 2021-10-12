@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.ourtube">
+    package="com.fibonation.ourtube">
    <application
         android:label="ourtube"
         android:icon="@mipmap/ic_launcher">

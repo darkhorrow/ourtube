@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flowder/flowder.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
+
 class SetupPage extends StatefulWidget {
   const SetupPage({Key? key, required this.title}) : super(key: key);
 
@@ -18,34 +21,28 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late AnimationController _controller;
   late DownloaderUtils options;
   late DownloaderCore core;
-  late final String path = '';
+  late Future<Directory?>? _appFiles;
   bool _completed = false;
-  ConnectivityResult _connectionState = ConnectivityResult.none;
+  ConnectivityResult _connectionState = ConnectivityResult.ethernet;
 
   @override
   void initState() {
+    super.initState();
     _controller = AnimationController(
       vsync: this
     )..addListener(() {
       setState(() {});
     });
-    super.initState();
+  }
 
-    var connectivityResult = Connectivity().checkConnectivity();
-    connectivityResult.then((connection) => setState(() { _connectionState = connection; }));
+  @override void didChangeDependencies() {
+    super.didChangeDependencies();
+    fillConnectivity();
+    fillInstallPath();
 
-    options = DownloaderUtils(
-      progressCallback: (current, total) {
-        final progress = (current / total);
-        _controller.value = progress;
-      },
-      file: File('$path/5MB.zip'),
-      progress: ProgressImplementation(),
-      onDone: () => setState(() { _completed = true; }),
-      deleteOnCancel: true,
-    );
-
-    var core = Flowder.download('http://ipv4.download.thinkbroadband.com/5MB.zip', options);
+    _appFiles!.then((route) => {
+      downloadFiles(route!.path)
+    });
   }
 
   @override
@@ -96,20 +93,55 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
     );
   }
 
-  void downloadFiles(ConnectivityResult connectionStatus) {
-    switch(connectionStatus) {
+  void downloadFiles(String path) {
+    switch(_connectionState) {
       case ConnectivityResult.wifi:
-      // TODO: Handle this case.
-        break;
       case ConnectivityResult.ethernet:
-      // TODO: Handle this case.
-        break;
       case ConnectivityResult.mobile:
-      // TODO: Handle this case.
+        options = DownloaderUtils(
+          progressCallback: (current, total) {
+            final progress = (current / total);
+            _controller.value = progress;
+          },
+          file: File('$path/5MB.zip'),
+          progress: ProgressImplementation(),
+          onDone: () => setState(() { _completed = true; }),
+          deleteOnCancel: true,
+        );
+        Flowder.download('http://ipv4.download.thinkbroadband.com/5MB.zip', options).then((value) => core = value);
         break;
       case ConnectivityResult.none:
       // TODO: Handle this case.
         break;
     }
+  }
+
+  bool isInstalled() {
+    bool exists = false;
+    _appFiles!.then((value) => exists = Directory(p.join(value!.path, '.ourtube')).existsSync());
+    return exists;
+  }
+
+  void fillInstallPath() {
+    switch(Theme.of(context).platform) {
+      case TargetPlatform.android:
+        _appFiles = getApplicationDocumentsDirectory();
+        break;
+      case TargetPlatform.fuchsia:
+        throw UnsupportedError("FuchsiaOS is an unsupported platform");
+      case TargetPlatform.iOS:
+        throw UnsupportedError("iOS is an unsupported platform");
+      case TargetPlatform.linux:
+        throw UnsupportedError("Linux is an unsupported platform");
+      case TargetPlatform.macOS:
+        throw UnsupportedError("MacOS is an unsupported platform");
+      case TargetPlatform.windows:
+        _appFiles = getApplicationSupportDirectory();
+        break;
+    }
+  }
+
+  void fillConnectivity() {
+    Connectivity().checkConnectivity().then((connection) => setState(() { _connectionState = connection; }));
   }
 }
