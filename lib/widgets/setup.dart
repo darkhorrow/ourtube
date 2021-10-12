@@ -19,17 +19,33 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late DownloaderUtils options;
   late DownloaderCore core;
   late final String path = '';
+  bool _completed = false;
   ConnectivityResult _connectionState = ConnectivityResult.none;
 
   @override
   void initState() {
     _controller = AnimationController(
       vsync: this
-    );
+    )..addListener(() {
+      setState(() {});
+    });
     super.initState();
 
     var connectivityResult = Connectivity().checkConnectivity();
     connectivityResult.then((connection) => setState(() { _connectionState = connection; }));
+
+    options = DownloaderUtils(
+      progressCallback: (current, total) {
+        final progress = (current / total);
+        _controller.value = progress;
+      },
+      file: File('$path/5MB.zip'),
+      progress: ProgressImplementation(),
+      onDone: () => setState(() { _completed = true; }),
+      deleteOnCancel: true,
+    );
+
+    var core = Flowder.download('http://ipv4.download.thinkbroadband.com/5MB.zip', options);
   }
 
   @override
@@ -55,38 +71,17 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children:  <Widget>[
-                  Text('TERI TERI'),
-                  Text('Audio'),
-                  ElevatedButton(
-                    onPressed: () async {
-                      options = DownloaderUtils(
-                        progressCallback: (current, total) {
-                          final progress = (current / total) * 100;
-                          print('Downloading: $progress');
-                        },
-                        file: File('$path/5MB.zip'),
-                        progress: ProgressImplementation(),
-                        onDone: () => print('COMPLETE'),
-                        deleteOnCancel: true,
-                      );
-                      core = await Flowder.download(
-                          'http://ipv4.download.thinkbroadband.com/5MB.zip',
-                          options);
-                    },
-                    child: Text('DOWNLOAD'),
+                children: [
+                  Text(_completed ? 'Everything is up to date' : 'Updating...',
+                    style: const TextStyle(
+                        fontSize: 30
+                    )
                   ),
-                  ElevatedButton(
-                    onPressed: () async => core.resume(),
-                    child: Text('RESUME'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async => core.cancel(),
-                    child: Text('CANCEL'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async => core.pause(),
-                    child: Text('PAUSE'),
+                  LinearProgressIndicator(
+                    value: _controller.value,
+                    semanticsLabel: 'Linear progress indicator',
+                    color: _completed ? Colors.green : Colors.blue,
+                    minHeight: 10,
                   ),
                 ],
               ),
