@@ -40,13 +40,22 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
     fillConnectivity();
     fillInstallPath();
 
-    _appFiles!.then((route) => {
-      downloadFiles(route!.path)
-    });
+    _appFiles!.then((directory) =>
+        File(p.join(directory!.path, 'bin', 'youtube-dl.exe')).exists().then((exists) => {
+          if(!exists) {
+            _appFiles!.then((route) => {
+              downloadFiles(route!.path)
+            })
+          } else {
+            setState(() { _completed = true; })
+            }
+        })
+    );
   }
 
   @override
   void dispose() {
+    core.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -71,11 +80,11 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                 children: [
                   Text(_completed ? 'Everything is up to date' : 'Updating...',
                     style: const TextStyle(
-                        fontSize: 30
+                        fontSize: 20
                     )
                   ),
                   LinearProgressIndicator(
-                    value: _controller.value,
+                    value: _completed ? 1 : _controller.value,
                     semanticsLabel: 'Linear progress indicator',
                     color: _completed ? Colors.green : Colors.blue,
                     minHeight: 10,
@@ -103,23 +112,16 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
             final progress = (current / total);
             _controller.value = progress;
           },
-          file: File('$path/5MB.zip'),
+          file: File(p.join(path, 'bin', 'youtube-dl.exe')),
           progress: ProgressImplementation(),
           onDone: () => setState(() { _completed = true; }),
           deleteOnCancel: true,
         );
-        Flowder.download('http://ipv4.download.thinkbroadband.com/5MB.zip', options).then((value) => core = value);
+        Flowder.download('https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe', options).then((value) => core = value);
         break;
       case ConnectivityResult.none:
-      // TODO: Handle this case.
         break;
     }
-  }
-
-  bool isInstalled() {
-    bool exists = false;
-    _appFiles!.then((value) => exists = Directory(p.join(value!.path, '.ourtube')).existsSync());
-    return exists;
   }
 
   void fillInstallPath() {
@@ -143,5 +145,15 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
 
   void fillConnectivity() {
     Connectivity().checkConnectivity().then((connection) => setState(() { _connectionState = connection; }));
+  }
+
+  void _showToast(BuildContext context) {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      SnackBar(
+        content: const Text('Added to favorite'),
+        action: SnackBarAction(label: 'UNDO', onPressed: scaffold.hideCurrentSnackBar),
+      ),
+    );
   }
 }
