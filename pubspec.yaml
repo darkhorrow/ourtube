@@ -33,6 +33,7 @@ dependencies:
   flowder: ^0.2.0
   cupertino_icons: ^1.0.2
   path_provider: ^2.0.5
+  connectivity_plus: ^2.0.2
 
 dev_dependencies:
   flutter_test:

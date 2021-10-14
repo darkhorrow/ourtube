@@ -1,4 +1,4 @@
-package com.example.ourtube;
+package com.fibonation.ourtube;
 
 import io.flutter.embedding.android.FlutterActivity;
 
