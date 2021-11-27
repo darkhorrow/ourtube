@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flowder/flowder.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:ourtube/widgets/home.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -86,12 +87,23 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                         fontSize: 20
                     )
                   ),
+                  const SizedBox(height: 10),
                   LinearProgressIndicator(
                     value: _completed ? 1 : _controller.value,
                     semanticsLabel: 'Linear progress indicator',
                     color: _completed && !_didFail ? Colors.green : _didFail ? Colors.red : Colors.blue,
                     minHeight: 10,
                   ),
+                  if(_completed && !_didFail) ...[
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Home page')));
+                      },
+                      label: const Text('Continue'),
+                      icon: const Icon(Icons.double_arrow_sharp),
+                    )
+                  ]
                 ],
               ),
             ),
@@ -133,7 +145,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
 
   void updateFiles(filePath) {
     Process.run(filePath, ['-U']).then((result) {
-      if(result.exitCode == 1) {
+      if(result.exitCode == 0) {
         setState(() { _completed = true; });
       } else {
         setState(() { _completed = true; _didFail = true; });
