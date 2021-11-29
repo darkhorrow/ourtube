@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ourtube/widgets/setup.dart';
@@ -20,6 +18,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: const SetupPage(title: 'Setup'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

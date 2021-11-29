@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flowder/flowder.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:ourtube/widgets/home.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -23,6 +24,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late DownloaderCore core;
   late Future<Directory?>? _appFiles;
   bool _completed = false;
+  bool _didFail = false;
   ConnectivityResult _connectionState = ConnectivityResult.ethernet;
 
   @override
@@ -47,8 +49,10 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
               downloadFiles(route!.path)
             })
           } else {
-            setState(() { _completed = true; })
-            }
+            _appFiles!.then((route) => {
+              updateFiles(p.join(route!.path, 'bin', 'youtube-dl.exe'))
+            })
+          }
         })
     );
   }
@@ -78,17 +82,28 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_completed ? 'Everything is up to date' : 'Updating...',
+                  Text(_completed && !_didFail ? 'Everything is up to date' : _didFail ? 'Error on the dependencies update' : 'Updating...',
                     style: const TextStyle(
                         fontSize: 20
                     )
                   ),
+                  const SizedBox(height: 10),
                   LinearProgressIndicator(
                     value: _completed ? 1 : _controller.value,
                     semanticsLabel: 'Linear progress indicator',
-                    color: _completed ? Colors.green : Colors.blue,
+                    color: _completed && !_didFail ? Colors.green : _didFail ? Colors.red : Colors.blue,
                     minHeight: 10,
                   ),
+                  if(_completed && !_didFail) ...[
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Home page')));
+                      },
+                      label: const Text('Continue'),
+                      icon: const Icon(Icons.double_arrow_sharp),
+                    )
+                  ]
                 ],
               ),
             ),
@@ -103,6 +118,8 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   }
 
   void downloadFiles(String path) {
+    String filePath = p.join(path, 'bin', 'youtube-dl.exe');
+
     switch(_connectionState) {
       case ConnectivityResult.wifi:
       case ConnectivityResult.ethernet:
@@ -112,9 +129,11 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
             final progress = (current / total);
             _controller.value = progress;
           },
-          file: File(p.join(path, 'bin', 'youtube-dl.exe')),
+          file: File(filePath),
           progress: ProgressImplementation(),
-          onDone: () => setState(() { _completed = true; }),
+          onDone: () {
+            setState(() { _completed = true; });
+          },
           deleteOnCancel: true,
         );
         Flowder.download('https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe', options).then((value) => core = value);
@@ -122,6 +141,17 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
       case ConnectivityResult.none:
         break;
     }
+  }
+
+  void updateFiles(filePath) {
+    Process.run(filePath, ['-U']).then((result) {
+      if(result.exitCode == 0) {
+        setState(() { _completed = true; });
+      } else {
+        setState(() { _completed = true; _didFail = true; });
+        _showToast(context, "Error updating the application dependencies");
+      }
+    });
   }
 
   void fillInstallPath() {
@@ -147,12 +177,12 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
     Connectivity().checkConnectivity().then((connection) => setState(() { _connectionState = connection; }));
   }
 
-  void _showToast(BuildContext context) {
+  void _showToast(BuildContext context, String message) {
     final scaffold = ScaffoldMessenger.of(context);
     scaffold.showSnackBar(
       SnackBar(
-        content: const Text('Added to favorite'),
-        action: SnackBarAction(label: 'UNDO', onPressed: scaffold.hideCurrentSnackBar),
+        content: Text(message),
+        action: SnackBarAction(label: 'Ok', onPressed: scaffold.hideCurrentSnackBar),
       ),
     );
   }
