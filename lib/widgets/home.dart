@@ -18,7 +18,6 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _searchDone = false;
   String _thumbnailPath = '';
   final _controller = TextEditingController();
-  FadeInImage? _imageController;
 
   @override
   void initState() {
@@ -109,26 +108,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: CircularProgressIndicator()
                 ),
                 Center(
-                  child: _imageController = FadeInImage.memoryNetwork(
+                  child: FadeInImage.memoryNetwork(
                     placeholder: kTransparentImage,
                     image: _thumbnailPath,
                     width: 480,
                     height: 360,
                     imageErrorBuilder: (context, error, stackTrace) {
-                      return const SizedBox(
-                        width: 480,
-                        height: 360,
-                      );
+                      return Image.asset('assets/images/placeholder-480x360.jpg');
                     },
                   ),
                 ),
               ],
             ),
           ] else ...[
-            const SizedBox(
-              width: 480,
-              height: 360,
-            )
+            Image.asset('assets/images/placeholder-480x360.jpg')
           ],
           const SizedBox(height: 20),
           Row(
@@ -140,36 +133,34 @@ class _MyHomePageState extends State<MyHomePage> {
               Expanded(
                 flex: 6,
                 child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextField(
-                          style: const TextStyle(
-                              fontSize: 30
-                          ),
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            labelText: 'Enter a YouTube URL',
-                            errorText: _validationError ? 'Not a valid YouTube URL' : null,
-                          ),
-                          onChanged: (String input) { _trimInput(input); },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextField(
+                        style: const TextStyle(
+                            fontSize: 30
                         ),
-                        if(!_preDownloadError) ...[
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton.icon(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          labelText: 'Enter a YouTube URL',
+                          errorText: _validationError ? 'Not a valid YouTube URL' : null,
+                        ),
+                        onChanged: (String input) { _trimInput(input); },
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if(!_preDownloadError) ...[
+                            ElevatedButton.icon(
                               onPressed: () {},
                               label: const Text('Download'),
                               icon: const Icon(Icons.file_download),
                             ),
-                          )
-                        ],
-                        if(!_validationError) ...[
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton.icon(
+                          ],
+                          const SizedBox(width: 10),
+                          if(!_validationError) ...[
+                            ElevatedButton.icon(
                               onPressed: () {
                                 _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
                                   if(isValid) {
@@ -182,14 +173,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                     _badYoutubeVideoErrorCallback()
                                   }
                                 });
-                              },
+                               },
                               label: const Text('Search'),
                               icon: const Icon(Icons.search),
                             ),
-                          )
-                        ]
-                      ],
-                    )
+                          ]
+                        ],
+                      ),
+                    ],
+                  )
                 ),
               ),
               Expanded(
