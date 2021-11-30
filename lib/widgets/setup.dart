@@ -22,10 +22,9 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late AnimationController _controller;
   late DownloaderUtils options;
   late DownloaderCore core;
-  late Future<Directory?>? _appFiles;
+  final Future<Directory> _appFiles = getApplicationSupportDirectory();
   bool _completed = false;
   bool _didFail = false;
-  ConnectivityResult _connectionState = ConnectivityResult.ethernet;
 
   @override
   void initState() {
@@ -39,18 +38,16 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
 
   @override void didChangeDependencies() {
     super.didChangeDependencies();
-    fillConnectivity();
-    fillInstallPath();
 
-    _appFiles!.then((directory) =>
-        File(p.join(directory!.path, 'bin', 'youtube-dl.exe')).exists().then((exists) => {
+    _appFiles.then((directory) =>
+        File(p.join(directory.path, 'bin', 'youtube-dl.exe')).exists().then((exists) => {
           if(!exists) {
-            _appFiles!.then((route) => {
-              downloadFiles(route!.path)
+            _appFiles.then((route) => {
+              downloadFiles(route.path)
             })
           } else {
-            _appFiles!.then((route) => {
-              updateFiles(p.join(route!.path, 'bin', 'youtube-dl.exe'))
+            _appFiles.then((route) => {
+              updateFiles(p.join(route.path, 'bin', 'youtube-dl.exe'))
             })
           }
         })
@@ -83,9 +80,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(_completed && !_didFail ? 'Everything is up to date' : _didFail ? 'Error on the dependencies update' : 'Updating...',
-                    style: const TextStyle(
-                        fontSize: 20
-                    )
+                    style: const TextStyle(fontSize: 20)
                   ),
                   const SizedBox(height: 10),
                   LinearProgressIndicator(
@@ -120,7 +115,13 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   void downloadFiles(String path) {
     String filePath = p.join(path, 'bin', 'youtube-dl.exe');
 
-    switch(_connectionState) {
+    Connectivity().checkConnectivity().then((connection) => {
+      downloadFilesRun(connection, File(filePath))
+    });
+  }
+
+  void downloadFilesRun(ConnectivityResult connectivityResult, File targetFile) {
+    switch(connectivityResult) {
       case ConnectivityResult.wifi:
       case ConnectivityResult.ethernet:
       case ConnectivityResult.mobile:
@@ -129,7 +130,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
             final progress = (current / total);
             _controller.value = progress;
           },
-          file: File(filePath),
+          file: targetFile,
           progress: ProgressImplementation(),
           onDone: () {
             setState(() { _completed = true; });
@@ -139,7 +140,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
         Flowder.download('https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe', options).then((value) => core = value);
         break;
       case ConnectivityResult.none:
-        break;
+        _showToast(context, "Internet connection is not available");
     }
   }
 
@@ -152,29 +153,6 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
         _showToast(context, "Error updating the application dependencies");
       }
     });
-  }
-
-  void fillInstallPath() {
-    switch(Theme.of(context).platform) {
-      case TargetPlatform.android:
-        _appFiles = getApplicationDocumentsDirectory();
-        break;
-      case TargetPlatform.fuchsia:
-        throw UnsupportedError("FuchsiaOS is an unsupported platform");
-      case TargetPlatform.iOS:
-        throw UnsupportedError("iOS is an unsupported platform");
-      case TargetPlatform.linux:
-        throw UnsupportedError("Linux is an unsupported platform");
-      case TargetPlatform.macOS:
-        throw UnsupportedError("MacOS is an unsupported platform");
-      case TargetPlatform.windows:
-        _appFiles = getApplicationSupportDirectory();
-        break;
-    }
-  }
-
-  void fillConnectivity() {
-    Connectivity().checkConnectivity().then((connection) => setState(() { _connectionState = connection; }));
   }
 
   void _showToast(BuildContext context, String message) {

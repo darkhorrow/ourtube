@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:validators/sanitizers.dart' as sanitizer;
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -16,8 +20,13 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _validationError = true;
   bool _preDownloadError = true;
   bool _searchDone = false;
+  bool _showDownloadButton = false;
   String _thumbnailPath = '';
   final _controller = TextEditingController();
+
+  late AnimationController _animationController;
+  late final Future<Directory?> _downloadDirectory = getDownloadsDirectory();
+  final Future<Directory> _appFiles = getApplicationSupportDirectory();
 
   @override
   void initState() {
@@ -27,6 +36,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    _animationController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -42,6 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _checkUrl() {
+    setState(() { _showDownloadButton = false; });
     bool _validURL = _isYouTubeUrl(sanitizer.trim(_controller.text));
     !_validURL ? setState(() { _validationError = true; }) : setState(() { _validationError = false; });
   }
@@ -77,8 +88,13 @@ class _MyHomePageState extends State<MyHomePage> {
       _searchDone = false;
       _preDownloadError = true;
       _validationError = true;
+      _showDownloadButton = false;
     });
     _showToast(context, "The video does not exist. Is it written ok?");
+  }
+
+  void _downloadFile(String downloadPath, String savePath) {
+
   }
 
   void _showToast(BuildContext context, String message) {
@@ -151,9 +167,21 @@ class _MyHomePageState extends State<MyHomePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          if(!_preDownloadError) ...[
+                          if(!_preDownloadError && _showDownloadButton) ...[
                             ElevatedButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                _appFiles.then((filesDirectory) => {
+                                  _downloadDirectory.then((downloadDirectory) => {
+                                    Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+                                      if(result.exitCode == 0) {
+                                        _showToast(context, "Video downloaded");
+                                      } else {
+                                        _showToast(context, "Error downloading the video");
+                                      }
+                                    })
+                                  })
+                                });
+                              },
                               label: const Text('Download'),
                               icon: const Icon(Icons.file_download),
                             ),
@@ -168,6 +196,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       _searchDone = true;
                                       _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
                                       _preDownloadError = false;
+                                      _showDownloadButton = true;
                                     })
                                   } else {
                                     _badYoutubeVideoErrorCallback()
@@ -189,7 +218,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Container(),
               )
             ],
-          )
+          ),
         ],
       )
     );
