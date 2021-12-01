@@ -21,6 +21,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _preDownloadError = true;
   bool _searchDone = false;
   bool _showDownloadButton = false;
+  bool _downloading = false;
   String _thumbnailPath = '';
   final _controller = TextEditingController();
 
@@ -91,10 +92,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _showDownloadButton = false;
     });
     _showToast(context, "The video does not exist. Is it written ok?");
-  }
-
-  void _downloadFile(String downloadPath, String savePath) {
-
   }
 
   void _showToast(BuildContext context, String message) {
@@ -170,9 +167,15 @@ class _MyHomePageState extends State<MyHomePage> {
                           if(!_preDownloadError && _showDownloadButton) ...[
                             ElevatedButton.icon(
                               onPressed: () {
+                                setState(() {
+                                  _downloading = true;
+                                });
                                 _appFiles.then((filesDirectory) => {
                                   _downloadDirectory.then((downloadDirectory) => {
                                     Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+                                      setState(() {
+                                        _downloading = false;
+                                      });
                                       if(result.exitCode == 0) {
                                         _showToast(context, "Video downloaded");
                                       } else {
@@ -183,7 +186,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                 });
                               },
                               label: const Text('Download'),
-                              icon: const Icon(Icons.file_download),
+                              icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
                             ),
                           ],
                           const SizedBox(width: 10),

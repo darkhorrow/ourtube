@@ -56,7 +56,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    core.cancel();
+    if(_didFail || !_completed) { core.cancel(); }
     _controller.dispose();
     super.dispose();
   }
@@ -93,7 +93,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Home page')));
+                        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Home page')), (route) => false);
                       },
                       label: const Text('Continue'),
                       icon: const Icon(Icons.double_arrow_sharp),
