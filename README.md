@@ -1,16 +1,7 @@
-# ourtube
+# OurTube
 
-A new Flutter project.
+OurTube is a software built in Flutter made with educational purposes that allows the download of media content using https://github.com/ytdl-org/youtube-dl. Due to the use of ytdl, the application will be built only in Windows and Linux.
 
-## Getting Started
+The application downloads and updated ytdl and other dependencies for video-to-audio conversion and afterwards, an input allows to paste a URL that will be verified. If the format is correct and a valid video is found, the download may be done.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Currently, the application will download the content in the 'Downloads' directory of the OS.

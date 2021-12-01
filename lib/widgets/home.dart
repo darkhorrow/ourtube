@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:transparent_image/transparent_image.dart';
 import 'package:validators/sanitizers.dart' as sanitizer;
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -15,9 +20,14 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _validationError = true;
   bool _preDownloadError = true;
   bool _searchDone = false;
+  bool _showDownloadButton = false;
+  bool _downloading = false;
   String _thumbnailPath = '';
   final _controller = TextEditingController();
-  FadeInImage? _imageController;
+
+  late AnimationController _animationController;
+  late final Future<Directory?> _downloadDirectory = getDownloadsDirectory();
+  final Future<Directory> _appFiles = getApplicationSupportDirectory();
 
   @override
   void initState() {
@@ -27,6 +37,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    _animationController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -42,6 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _checkUrl() {
+    setState(() { _showDownloadButton = false; });
     bool _validURL = _isYouTubeUrl(sanitizer.trim(_controller.text));
     !_validURL ? setState(() { _validationError = true; }) : setState(() { _validationError = false; });
   }
@@ -51,9 +63,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return regExp.hasMatch(url);
   }
 
-  String? _getYoutubeThumbnail(String videoUrl) {
+  String? _getYoutubeThumbnail(String url) {
     RegExp regExp = RegExp(r'^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$');
-    final RegExpMatch? match = regExp.firstMatch(videoUrl);
+    final RegExpMatch? match = regExp.firstMatch(url);
 
     if(match != null) {
       String? videoId = match.groupCount >= 5 ? match.group(5) : null;
@@ -61,6 +73,25 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     return null;
+  }
+  
+  Future<bool> _isValidYoutubeThumbnail(String url) async {
+    Uri urlParsed = Uri.parse(url);
+    var response = await http.head(Uri.https(urlParsed.authority, urlParsed.path));
+    if(response.statusCode == 200) {
+      return true;
+    }
+    return false;
+  }
+
+  void _badYoutubeVideoErrorCallback() {
+    setState(() {
+      _searchDone = false;
+      _preDownloadError = true;
+      _validationError = true;
+      _showDownloadButton = false;
+    });
+    _showToast(context, "The video does not exist. Is it written ok?");
   }
 
   void _showToast(BuildContext context, String message) {
@@ -90,31 +121,20 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: CircularProgressIndicator()
                 ),
                 Center(
-                  child: _imageController = FadeInImage.memoryNetwork(
+                  child: FadeInImage.memoryNetwork(
                     placeholder: kTransparentImage,
                     image: _thumbnailPath,
                     width: 480,
                     height: 360,
                     imageErrorBuilder: (context, error, stackTrace) {
-                      WidgetsBinding.instance?.addPostFrameCallback((_){
-                        setState(() { _preDownloadError = true; });
-                        _showToast(context, error.toString());
-                      });
-                      //
-                      return const SizedBox(
-                        width: 480,
-                        height: 360,
-                      );
+                      return Image.asset('assets/images/placeholder-480x360.jpg');
                     },
                   ),
                 ),
               ],
             ),
           ] else ...[
-            const SizedBox(
-              width: 480,
-              height: 360,
-            )
+            Image.asset('assets/images/placeholder-480x360.jpg')
           ],
           const SizedBox(height: 20),
           Row(
@@ -126,47 +146,74 @@ class _MyHomePageState extends State<MyHomePage> {
               Expanded(
                 flex: 6,
                 child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextField(
-                          style: const TextStyle(
-                              fontSize: 30
-                          ),
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            labelText: 'Enter a YouTube URL',
-                            errorText: _validationError ? 'Not a valid YouTube URL' : null,
-                          ),
-                          onChanged: (String input) { _trimInput(input); },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextField(
+                        style: const TextStyle(
+                            fontSize: 30
                         ),
-                        if(!_preDownloadError) ...[
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton.icon(
-                              onPressed: !_preDownloadError ? () {} : null,
-                              label: const Text('Download'),
-                              icon: const Icon(Icons.file_download),
-                            ),
-                          )
-                        ],
-                        if(!_validationError) ...[
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton.icon(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          labelText: 'Enter a YouTube URL',
+                          errorText: _validationError ? 'Not a valid YouTube URL' : null,
+                        ),
+                        onChanged: (String input) { _trimInput(input); },
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if(!_preDownloadError && _showDownloadButton) ...[
+                            ElevatedButton.icon(
                               onPressed: () {
-                                String? thumbPath = _getYoutubeThumbnail(_controller.text);
-                                setState(() { _searchDone = true; _thumbnailPath = thumbPath ?? ''; _preDownloadError = false; });
+                                setState(() {
+                                  _downloading = true;
+                                });
+                                _appFiles.then((filesDirectory) => {
+                                  _downloadDirectory.then((downloadDirectory) => {
+                                    Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+                                      setState(() {
+                                        _downloading = false;
+                                      });
+                                      if(result.exitCode == 0) {
+                                        _showToast(context, "Video downloaded");
+                                      } else {
+                                        _showToast(context, "Error downloading the video");
+                                      }
+                                    })
+                                  })
+                                });
                               },
+                              label: const Text('Download'),
+                              icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
+                            ),
+                          ],
+                          const SizedBox(width: 10),
+                          if(!_validationError) ...[
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
+                                  if(isValid) {
+                                    setState(() {
+                                      _searchDone = true;
+                                      _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
+                                      _preDownloadError = false;
+                                      _showDownloadButton = true;
+                                    })
+                                  } else {
+                                    _badYoutubeVideoErrorCallback()
+                                  }
+                                });
+                               },
                               label: const Text('Search'),
                               icon: const Icon(Icons.search),
                             ),
-                          )
-                        ]
-                      ],
-                    )
+                          ]
+                        ],
+                      ),
+                    ],
+                  )
                 ),
               ),
               Expanded(
@@ -174,7 +221,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Container(),
               )
             ],
-          )
+          ),
         ],
       )
     );
