@@ -94,6 +94,41 @@ class _MyHomePageState extends State<MyHomePage> {
     _showToast(context, "The video does not exist. Is it written ok?");
   }
 
+  void _downloadVideo() {
+    setState(() {
+      _downloading = true;
+    });
+    _appFiles.then((filesDirectory) => {
+      _downloadDirectory.then((downloadDirectory) => {
+        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+          setState(() {
+            _downloading = false;
+          });
+          if(result.exitCode == 0) {
+            _showToast(context, "Video downloaded");
+          } else {
+            _showToast(context, "Error downloading the video");
+          }
+        })
+      })
+    });
+  }
+
+  void _searchVideo() {
+    _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
+      if(isValid) {
+        setState(() {
+          _searchDone = true;
+          _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
+          _preDownloadError = false;
+          _showDownloadButton = true;
+        })
+      } else {
+        _badYoutubeVideoErrorCallback()
+      }
+    });
+  }
+
   void _showToast(BuildContext context, String message) {
     final scaffold = ScaffoldMessenger.of(context);
     scaffold.showSnackBar(
@@ -159,6 +194,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           errorText: _validationError ? 'Not a valid YouTube URL' : null,
                         ),
                         onChanged: (String input) { _trimInput(input); },
+                        autocorrect: false,
+                        enabled: _downloading ? false : true,
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -166,25 +203,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         children: [
                           if(!_preDownloadError && _showDownloadButton) ...[
                             ElevatedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _downloading = true;
-                                });
-                                _appFiles.then((filesDirectory) => {
-                                  _downloadDirectory.then((downloadDirectory) => {
-                                    Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
-                                      setState(() {
-                                        _downloading = false;
-                                      });
-                                      if(result.exitCode == 0) {
-                                        _showToast(context, "Video downloaded");
-                                      } else {
-                                        _showToast(context, "Error downloading the video");
-                                      }
-                                    })
-                                  })
-                                });
-                              },
+                              onPressed: !_downloading ? () {  _downloadVideo(); } : null,
+                              onLongPress: null,
                               label: const Text('Download'),
                               icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
                             ),
@@ -192,20 +212,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           const SizedBox(width: 10),
                           if(!_validationError) ...[
                             ElevatedButton.icon(
-                              onPressed: () {
-                                _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
-                                  if(isValid) {
-                                    setState(() {
-                                      _searchDone = true;
-                                      _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
-                                      _preDownloadError = false;
-                                      _showDownloadButton = true;
-                                    })
-                                  } else {
-                                    _badYoutubeVideoErrorCallback()
-                                  }
-                                });
-                               },
+                              onPressed: !_downloading ? () { _searchVideo(); } : null,
+                              onLongPress: null,
                               label: const Text('Search'),
                               icon: const Icon(Icons.search),
                             ),
