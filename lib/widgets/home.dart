@@ -22,6 +22,8 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _searchDone = false;
   bool _showDownloadButton = false;
   bool _downloading = false;
+  bool _isAudio = false;
+
   String _thumbnailPath = '';
   final _controller = TextEditingController();
 
@@ -74,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return null;
   }
-  
+
   Future<bool> _isValidYoutubeThumbnail(String url) async {
     Uri urlParsed = Uri.parse(url);
     var response = await http.head(Uri.https(urlParsed.authority, urlParsed.path));
@@ -100,13 +102,14 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     _appFiles.then((filesDirectory) => {
       _downloadDirectory.then((downloadDirectory) => {
-        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format mp3' ,'--ffmpeg-location ${p.join(filesDirectory.path, 'bin', 'ffmpeg.exe')}', _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
           setState(() {
             _downloading = false;
           });
           if(result.exitCode == 0) {
             _showToast(context, "Video downloaded");
           } else {
+            print(result.stderr);
             _showToast(context, "Error downloading the video");
           }
         })
@@ -202,6 +205,15 @@ class _MyHomePageState extends State<MyHomePage> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           if(!_preDownloadError && _showDownloadButton) ...[
+                            Expanded(
+                              child: SwitchListTile(
+                                value: _isAudio,
+                                title: Text(_isAudio ? 'Download as audio' : 'Download as video'),
+                                secondary: Icon(_isAudio ? Icons.audiotrack : Icons.video_collection),
+                                onChanged: !_downloading ? (value) { setState(() { _isAudio = value; }); } : null,
+                              ),
+                            ),
+                            const SizedBox(width: 15),
                             ElevatedButton.icon(
                               onPressed: !_downloading ? () {  _downloadVideo(); } : null,
                               onLongPress: null,
@@ -209,7 +221,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
                             ),
                           ],
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 20),
                           if(!_validationError) ...[
                             ElevatedButton.icon(
                               onPressed: !_downloading ? () { _searchVideo(); } : null,
