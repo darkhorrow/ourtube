@@ -9,6 +9,8 @@ import 'package:ourtube/widgets/home.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:archive/archive.dart';
+
 class SetupPage extends StatefulWidget {
   const SetupPage({Key? key, required this.title}) : super(key: key);
 
@@ -21,10 +23,21 @@ class SetupPage extends StatefulWidget {
 class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late AnimationController _controller;
   late DownloaderUtils options;
+  late DownloaderUtils optionsYoutubeDl;
+  late DownloaderUtils optionsFfmpeg;
+
   late DownloaderCore core;
   final Future<Directory> _appFiles = getApplicationSupportDirectory();
+
   bool _completed = false;
   bool _didFail = false;
+
+  bool _updating = false;
+
+  int _filesCompleted = 0;
+
+  bool _completedYoutubeDl = false;
+  bool _completedFfmpeg = false;
 
   @override
   void initState() {
@@ -39,19 +52,29 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   @override void didChangeDependencies() {
     super.didChangeDependencies();
 
-    _appFiles.then((directory) =>
-        File(p.join(directory.path, 'bin', 'youtube-dl.exe')).exists().then((exists) => {
-          if(!exists) {
-            _appFiles.then((route) => {
-              downloadFiles(route.path)
-            })
-          } else {
-            _appFiles.then((route) => {
-              updateFiles(p.join(route.path, 'bin', 'youtube-dl.exe'))
-            })
-          }
-        })
-    );
+    _appFiles.then((directory) {
+      File(p.join(directory.path, 'bin', 'youtube-dl.exe')).exists().then((exists) {
+        if(!exists) {
+          _appFiles.then((route) => {
+            downloadFile(
+              'https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe',
+              File(p.join(directory.path, 'bin', 'youtube-dl.exe')),
+              () {
+                setState(() { _completedYoutubeDl = true; });
+                downloadFfmpeg(directory);
+              }
+            )
+          });
+        } else {
+          setState(() { _updating = true; });
+          _appFiles.then((route) => {
+            updateYoutubeDl(p.join(route.path, 'bin', 'youtube-dl.exe')),
+            setState(() { _filesCompleted++; }),
+            downloadFfmpeg(directory)
+          });
+        }
+      });
+    });
   }
 
   @override
@@ -79,9 +102,12 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_completed && !_didFail ? 'Everything is up to date' : _didFail ? 'Error on the dependencies update' : 'Updating...',
+                  Text(_completed && !_didFail ? 'Everything is up to date' : _didFail ? 'Error on the dependencies update' : _updating ? 'Updating...' : 'Downloading...',
                     style: const TextStyle(fontSize: 20)
                   ),
+                  if(!_updating && !_completed) ...[
+                    Text('$_filesCompleted/2', style: const TextStyle(fontSize: 20)),
+                  ],
                   const SizedBox(height: 10),
                   LinearProgressIndicator(
                     value: _completed ? 1 : _controller.value,
@@ -112,45 +138,115 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
     );
   }
 
-  void downloadFiles(String path) {
-    String filePath = p.join(path, 'bin', 'youtube-dl.exe');
-
-    Connectivity().checkConnectivity().then((connection) => {
-      downloadFilesRun(connection, File(filePath))
+  void downloadFile(String downloadUrl, File targetFile, Function onDone) {
+    Connectivity().checkConnectivity().then((connectivityResult) {
+      switch(connectivityResult) {
+        case ConnectivityResult.wifi:
+        case ConnectivityResult.ethernet:
+        case ConnectivityResult.mobile:
+          options = DownloaderUtils(
+            progressCallback: (current, total) {
+              final progress = (current / total);
+              _controller.value = progress;
+            },
+            file: targetFile,
+            progress: ProgressImplementation(),
+            onDone: () { onDone(); setState(() { _filesCompleted++; }); },
+            deleteOnCancel: true,
+          );
+          Flowder.download(downloadUrl, options).then((value) {
+            core = value;
+          });
+          break;
+        case ConnectivityResult.none:
+          _showToast(context, "Internet connection is not available");
+      }
     });
   }
 
-  void downloadFilesRun(ConnectivityResult connectivityResult, File targetFile) {
-    switch(connectivityResult) {
-      case ConnectivityResult.wifi:
-      case ConnectivityResult.ethernet:
-      case ConnectivityResult.mobile:
-        options = DownloaderUtils(
-          progressCallback: (current, total) {
-            final progress = (current / total);
-            _controller.value = progress;
-          },
-          file: targetFile,
-          progress: ProgressImplementation(),
-          onDone: () {
-            setState(() { _completed = true; });
-          },
-          deleteOnCancel: true,
-        );
-        Flowder.download('https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe', options).then((value) => core = value);
-        break;
-      case ConnectivityResult.none:
-        _showToast(context, "Internet connection is not available");
+  void extractZippedFiles(File sourceFile, String targetDirPath) {
+    final bytes = sourceFile.readAsBytesSync();
+    final archive = ZipDecoder().decodeBytes(bytes);
+
+    for (final file in archive) {
+      final filename = file.name;
+      if (file.isFile) {
+        final data = file.content as List<int>;
+        File(p.join(targetDirPath, filename))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(data);
+      } else {
+        Directory(p.join(targetDirPath, filename)).create(recursive: true);
+      }
     }
   }
 
-  void updateFiles(filePath) {
+  void updateYoutubeDl(filePath) {
     Process.run(filePath, ['-U']).then((result) {
       if(result.exitCode == 0) {
-        setState(() { _completed = true; });
+        setState(() { _updating = false; _completedYoutubeDl = true; });
       } else {
-        setState(() { _completed = true; _didFail = true; });
+        setState(() { _updating = false; _didFail = true; _completedYoutubeDl = true; });
         _showToast(context, "Error updating the application dependencies");
+      }
+    });
+  }
+
+  downloadFfmpeg(Directory directory) {
+    File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')).exists().then((exists) {
+      if(!exists) {
+        _appFiles.then((route) => {
+          downloadFile(
+            'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
+            File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')),
+            () {
+              File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials')).exists().then((existsFfmpeg) {
+                if(!existsFfmpeg) {
+                  try {
+                    extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+                  } on Exception catch (_, e) {
+                    print(e);
+                    setState(() {
+                      _didFail = true;
+                    });
+                  }
+                  setState(() { _completedFfmpeg = true; });
+                  if(_completedYoutubeDl && _completedFfmpeg) {
+                    setState(() {
+                      _completed = true;
+                    });
+                  }
+                } else {
+                  setState(() { _completedFfmpeg = true; });
+                  if(_completedYoutubeDl && _completedFfmpeg) {
+                    setState(() {
+                      _completed = true;
+                    });
+                  }
+                }
+              }
+            );
+           }
+          )
+        });
+      } else {
+        setState(() {
+          _updating = true;
+        });
+        try {
+          extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+        } on Exception catch (_, e) {
+          print(e);
+          setState(() {
+            _completed = true; _didFail = true;
+          });
+        }
+        setState(() { _completedFfmpeg = true; });
+        if(_completedYoutubeDl && _completedFfmpeg) {
+          setState(() {
+            _completed = true;
+          });
+        }
       }
     });
   }
