@@ -102,15 +102,14 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     _appFiles.then((filesDirectory) => {
       _downloadDirectory.then((downloadDirectory) => {
-        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format mp3' ,'--ffmpeg-location ${p.join(filesDirectory.path, 'bin', 'ffmpeg.exe')}', _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format', 'mp3' ,'--ffmpeg-location', p.join(p.join(Directory(p.join(filesDirectory.path, 'bin', 'ffmpeg-release-essentials')).listSync().first.path), 'bin', 'ffmpeg.exe'), _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
           setState(() {
             _downloading = false;
           });
           if(result.exitCode == 0) {
-            _showToast(context, "Video downloaded");
+            _showToast(context, "${_isAudio ? 'Audio' : 'Video'} downloaded");
           } else {
-            print(result.stderr);
-            _showToast(context, "Error downloading the video");
+            _showToast(context, "Error downloading the ${_isAudio ? 'audio' : 'video'}");
           }
         })
       })
