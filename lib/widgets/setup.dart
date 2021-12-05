@@ -34,8 +34,6 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
 
   int _filesCompleted = 0;
 
-  bool _completedYoutubeDl = false;
-  bool _completedFfmpeg = false;
 
   @override
   void initState() {
@@ -58,7 +56,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
               'https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe',
               File(p.join(directory.path, 'bin', 'youtube-dl.exe')),
               () {
-                setState(() { _completedYoutubeDl = true; });
+                setState(() { });
                 downloadFfmpeg(directory);
               }
             )
@@ -182,53 +180,59 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   void updateYoutubeDl(filePath) {
     Process.run(filePath, ['-U']).then((result) {
       if(result.exitCode == 0) {
-        setState(() { _updating = false; _completedYoutubeDl = true; });
+        setState(() { _updating = false; });
       } else {
-        setState(() { _updating = false; _didFail = true; _completedYoutubeDl = true; });
+        setState(() { _updating = false; _didFail = true; });
         _showToast(context, "Error updating the application dependencies");
       }
     });
   }
 
   downloadFfmpeg(Directory directory) {
-    File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')).exists().then((exists) {
-      if(!exists) {
-        _appFiles.then((route) => {
-          downloadFile(
-            'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
-            File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')),
-            () {
-              File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials')).exists().then((existsFfmpeg) {
-                if(!existsFfmpeg) {
-                  try {
-                    extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
-                    setState(() { _completed = true; _completedFfmpeg = true; });
-                  } on Exception catch (_, e) {
-                    setState(() {
-                      _didFail = true;
-                    });
+    File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')).exists().then((existsZipFile) {
+      Directory(p.join(directory.path, 'bin', 'ffmpeg-release-essentials')).exists().then((existsFfmpeg) {
+        if (!existsFfmpeg) {
+          if (!existsZipFile) {
+            _appFiles.then((route) => {
+              downloadFile(
+                'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
+                File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')),
+                () {
+                  File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials')).exists().then((existsFfmpeg) {
+                    if(!existsFfmpeg) {
+                      try {
+                        extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+                        setState(() { _completed = true; });
+                      } on Exception catch (_) {
+                        setState(() {
+                          _didFail = true;
+                        });
+                      }
+                    } else {
+                      setState(() { _completed = true; });
+                    }
                   }
-                } else {
-                  setState(() { _completed = true; _completedFfmpeg = true; });
+                  );
                 }
-              }
-            );
-           }
-          )
-        });
-      } else {
-        setState(() {
-          _updating = true;
-        });
-        try {
-          extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
-          setState(() { _completed = true; _completedFfmpeg = true; });
-        } on Exception catch (_, e) {
-          setState(() {
-            _didFail = true;
-          });
+              )
+            });
+          } else {
+            setState(() {
+              _updating = true;
+            });
+            try {
+              extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+              setState(() { _completed = true; });
+            } on Exception catch (_) {
+              setState(() {
+                _didFail = true;
+              });
+            }
+          }
+        } else {
+          setState(() { _completed = true; });
         }
-      }
+      });
     });
   }
 
