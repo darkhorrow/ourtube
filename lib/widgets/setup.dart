@@ -23,8 +23,6 @@ class SetupPage extends StatefulWidget {
 class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
   late AnimationController _controller;
   late DownloaderUtils options;
-  late DownloaderUtils optionsYoutubeDl;
-  late DownloaderUtils optionsFfmpeg;
 
   late DownloaderCore core;
   final Future<Directory> _appFiles = getApplicationSupportDirectory();
@@ -204,25 +202,14 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                 if(!existsFfmpeg) {
                   try {
                     extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+                    setState(() { _completed = true; _completedFfmpeg = true; });
                   } on Exception catch (_, e) {
-                    print(e);
                     setState(() {
                       _didFail = true;
                     });
                   }
-                  setState(() { _completedFfmpeg = true; });
-                  if(_completedYoutubeDl && _completedFfmpeg) {
-                    setState(() {
-                      _completed = true;
-                    });
-                  }
                 } else {
-                  setState(() { _completedFfmpeg = true; });
-                  if(_completedYoutubeDl && _completedFfmpeg) {
-                    setState(() {
-                      _completed = true;
-                    });
-                  }
+                  setState(() { _completed = true; _completedFfmpeg = true; });
                 }
               }
             );
@@ -235,16 +222,10 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
         });
         try {
           extractZippedFiles(File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')), p.join(directory.path, 'bin', 'ffmpeg-release-essentials'));
+          setState(() { _completed = true; _completedFfmpeg = true; });
         } on Exception catch (_, e) {
-          print(e);
           setState(() {
-            _completed = true; _didFail = true;
-          });
-        }
-        setState(() { _completedFfmpeg = true; });
-        if(_completedYoutubeDl && _completedFfmpeg) {
-          setState(() {
-            _completed = true;
+            _didFail = true;
           });
         }
       }
