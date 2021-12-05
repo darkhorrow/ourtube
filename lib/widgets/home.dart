@@ -22,6 +22,8 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _searchDone = false;
   bool _showDownloadButton = false;
   bool _downloading = false;
+  bool _isAudio = false;
+
   String _thumbnailPath = '';
   final _controller = TextEditingController();
 
@@ -74,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return null;
   }
-  
+
   Future<bool> _isValidYoutubeThumbnail(String url) async {
     Uri urlParsed = Uri.parse(url);
     var response = await http.head(Uri.https(urlParsed.authority, urlParsed.path));
@@ -92,6 +94,41 @@ class _MyHomePageState extends State<MyHomePage> {
       _showDownloadButton = false;
     });
     _showToast(context, "The video does not exist. Is it written ok?");
+  }
+
+  void _downloadVideo() {
+    setState(() {
+      _downloading = true;
+    });
+    _appFiles.then((filesDirectory) => {
+      _downloadDirectory.then((downloadDirectory) => {
+        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format', 'mp3' ,'--ffmpeg-location', p.join(p.join(Directory(p.join(filesDirectory.path, 'bin', 'ffmpeg-release-essentials')).listSync().first.path), 'bin', 'ffmpeg.exe'), _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+          setState(() {
+            _downloading = false;
+          });
+          if(result.exitCode == 0) {
+            _showToast(context, "${_isAudio ? 'Audio' : 'Video'} downloaded");
+          } else {
+            _showToast(context, "Error downloading the ${_isAudio ? 'audio' : 'video'}");
+          }
+        })
+      })
+    });
+  }
+
+  void _searchVideo() {
+    _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
+      if(isValid) {
+        setState(() {
+          _searchDone = true;
+          _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
+          _preDownloadError = false;
+          _showDownloadButton = true;
+        })
+      } else {
+        _badYoutubeVideoErrorCallback()
+      }
+    });
   }
 
   void _showToast(BuildContext context, String message) {
@@ -159,53 +196,35 @@ class _MyHomePageState extends State<MyHomePage> {
                           errorText: _validationError ? 'Not a valid YouTube URL' : null,
                         ),
                         onChanged: (String input) { _trimInput(input); },
+                        autocorrect: false,
+                        enabled: _downloading ? false : true,
                       ),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           if(!_preDownloadError && _showDownloadButton) ...[
+                            Expanded(
+                              child: SwitchListTile(
+                                value: _isAudio,
+                                title: Text(_isAudio ? 'Download as audio' : 'Download as video'),
+                                secondary: Icon(_isAudio ? Icons.audiotrack : Icons.video_collection),
+                                onChanged: !_downloading ? (value) { setState(() { _isAudio = value; }); } : null,
+                              ),
+                            ),
+                            const SizedBox(width: 15),
                             ElevatedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _downloading = true;
-                                });
-                                _appFiles.then((filesDirectory) => {
-                                  _downloadDirectory.then((downloadDirectory) => {
-                                    Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), ['--no-playlist', '-f mp4', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
-                                      setState(() {
-                                        _downloading = false;
-                                      });
-                                      if(result.exitCode == 0) {
-                                        _showToast(context, "Video downloaded");
-                                      } else {
-                                        _showToast(context, "Error downloading the video");
-                                      }
-                                    })
-                                  })
-                                });
-                              },
+                              onPressed: !_downloading ? () {  _downloadVideo(); } : null,
+                              onLongPress: null,
                               label: const Text('Download'),
                               icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
                             ),
                           ],
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 20),
                           if(!_validationError) ...[
                             ElevatedButton.icon(
-                              onPressed: () {
-                                _isValidYoutubeThumbnail(_getYoutubeThumbnail(_controller.text) ?? '').then((isValid) => {
-                                  if(isValid) {
-                                    setState(() {
-                                      _searchDone = true;
-                                      _thumbnailPath = _getYoutubeThumbnail(_controller.text) ?? '';
-                                      _preDownloadError = false;
-                                      _showDownloadButton = true;
-                                    })
-                                  } else {
-                                    _badYoutubeVideoErrorCallback()
-                                  }
-                                });
-                               },
+                              onPressed: !_downloading ? () { _searchVideo(); } : null,
+                              onLongPress: null,
                               label: const Text('Search'),
                               icon: const Icon(Icons.search),
                             ),
