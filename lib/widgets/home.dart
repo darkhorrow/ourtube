@@ -6,6 +6,7 @@ import 'package:validators/sanitizers.dart' as sanitizer;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:filesystem_picker/filesystem_picker.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -26,6 +27,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String _thumbnailPath = '';
   final _controller = TextEditingController();
+  final _controllerFileChooser = TextEditingController();
 
   late AnimationController _animationController;
   late final Future<Directory?> _downloadDirectory = getDownloadsDirectory();
@@ -229,6 +231,38 @@ class _MyHomePageState extends State<MyHomePage> {
                               icon: const Icon(Icons.search),
                             ),
                           ]
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          if(!_preDownloadError && _showDownloadButton) ...[
+                            Expanded(
+                              child: TextFormField(
+                                controller: _controllerFileChooser,
+                                autocorrect: false,
+                                readOnly: true,
+                                onTap: () {
+                                  String? path;
+                                  _downloadDirectory.then((downloadDirectory) async  {
+                                    path = await FilesystemPicker.open(
+                                      title: 'Choose folder',
+                                      context: context,
+                                        rootName: 'C:',
+                                        rootDirectory: Directory('C:\\'),
+                                      fsType: FilesystemType.folder,
+                                      pickText: 'Choose the download folder',
+                                      folderIconColor: Colors.teal,
+                                    );
+                                    _controllerFileChooser.text = path ?? downloadDirectory?.path ?? 'Select a folder';
+                                  });
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Download folder',
+                                  suffixIcon: Icon(Icons.drive_file_move)
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],

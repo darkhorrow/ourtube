@@ -37,6 +37,7 @@ dependencies:
   transparent_image: ^2.0.0
   http: ^0.13.4
   archive: ^3.1.6
+  filesystem_picker: ^2.0.0
 
 dev_dependencies:
   flutter_test:
