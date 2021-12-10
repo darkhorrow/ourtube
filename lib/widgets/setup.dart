@@ -11,6 +11,8 @@ import 'package:path/path.dart' as p;
 
 import 'package:archive/archive.dart';
 
+import 'package:ourtube/utils/constants.dart' as constants;
+
 class SetupPage extends StatefulWidget {
   const SetupPage({Key? key, required this.title}) : super(key: key);
 
@@ -53,7 +55,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
         if(!exists) {
           _appFiles.then((route) => {
             downloadFile(
-              'https://github.com/ytdl-org/youtube-dl/releases/latest/download/youtube-dl.exe',
+              constants.youtubeDlUrl,
               File(p.join(directory.path, 'bin', 'youtube-dl.exe')),
               () {
                 setState(() { });
@@ -98,7 +100,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_completed && !_didFail ? 'Everything is up to date' : _didFail ? 'Error on the dependencies update' : _updating ? 'Updating...' : 'Downloading...',
+                  Text(_completed && !_didFail ? constants.upToDate : _didFail ? constants.updateError : _updating ? constants.updating : constants.downloading,
                     style: const TextStyle(fontSize: 20)
                   ),
                   if(!_updating && !_completed) ...[
@@ -117,7 +119,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
                       onPressed: () {
                         Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Home page')), (route) => false);
                       },
-                      label: const Text('Continue'),
+                      label: const Text(constants.goToHome),
                       icon: const Icon(Icons.double_arrow_sharp),
                     )
                   ]
@@ -155,7 +157,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
           });
           break;
         case ConnectivityResult.none:
-          _showToast(context, "Internet connection is not available");
+          _showToast(context, constants.internetNoAvailable);
       }
     });
   }
@@ -183,7 +185,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
         setState(() { _updating = false; });
       } else {
         setState(() { _updating = false; _didFail = true; });
-        _showToast(context, "Error updating the application dependencies");
+        _showToast(context, constants.updateError);
       }
     });
   }
@@ -195,7 +197,7 @@ class _SetupPageState extends State<SetupPage> with TickerProviderStateMixin {
           if (!existsZipFile) {
             _appFiles.then((route) => {
               downloadFile(
-                'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip',
+                constants.ffmpegUrl,
                 File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials.zip')),
                 () {
                   File(p.join(directory.path, 'bin', 'ffmpeg-release-essentials')).exists().then((existsFfmpeg) {
