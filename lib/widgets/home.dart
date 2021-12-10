@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:filesystem_picker/filesystem_picker.dart';
 
+import 'package:ourtube/utils/constants.dart' as constants;
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
 
@@ -37,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _controller.addListener(_checkUrl);
+    _controllerFileChooser.text = constants.directoryNotSelected;
   }
 
   @override
@@ -58,6 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _checkUrl() {
     setState(() { _showDownloadButton = false; });
+    _controllerFileChooser.text = constants.directoryNotSelected;
     bool _validURL = _isYouTubeUrl(sanitizer.trim(_controller.text));
     !_validURL ? setState(() { _validationError = true; }) : setState(() { _validationError = false; });
   }
@@ -99,21 +103,26 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _downloadVideo() {
-    setState(() {
-      _downloading = true;
-    });
     _appFiles.then((filesDirectory) => {
       _downloadDirectory.then((downloadDirectory) => {
-        Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format', 'mp3' ,'--ffmpeg-location', p.join(p.join(Directory(p.join(filesDirectory.path, 'bin', 'ffmpeg-release-essentials')).listSync().first.path), 'bin', 'ffmpeg.exe'), _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: downloadDirectory!.path).then((result) {
+        if(_controllerFileChooser.text == constants.directoryNotSelected) {
+          _showToast(context, "An invalid download folder has been selected"),
+        } else {
           setState(() {
-            _downloading = false;
-          });
-          if(result.exitCode == 0) {
-            _showToast(context, "${_isAudio ? 'Audio' : 'Video'} downloaded");
-          } else {
-            _showToast(context, "Error downloading the ${_isAudio ? 'audio' : 'video'}");
-          }
-        })
+              _downloading = true;
+          }),
+          Process.run(p.join(filesDirectory.path, 'bin', 'youtube-dl.exe'), _isAudio ? ['--no-playlist', '-x', '--audio-format', 'mp3' ,'--ffmpeg-location', p.join(p.join(Directory(p.join(filesDirectory.path, 'bin', 'ffmpeg-release-essentials')).listSync().first.path), 'bin', 'ffmpeg.exe'), _controller.text] : ['--no-playlist', '-f mp4', '--youtube-skip-dash-manifest', _controller.text], workingDirectory: _controllerFileChooser.text).then((result) {
+            setState(() {
+              _downloading = false;
+            });
+            _controllerFileChooser.text = downloadDirectory?.path ?? constants.directoryNotSelected;
+            if(result.exitCode == 0) {
+              _showToast(context, "${_isAudio ? 'Audio' : 'Video'} downloaded");
+            } else {
+              _showToast(context, "Error downloading the ${_isAudio ? 'audio' : 'video'}");
+            }
+          })
+        }
       })
     });
   }
@@ -247,13 +256,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                     path = await FilesystemPicker.open(
                                       title: 'Choose folder',
                                       context: context,
-                                        rootName: 'C:',
-                                        rootDirectory: Directory('C:\\'),
+                                      rootName: 'C:',
+                                      rootDirectory: Directory('C:\\'),
                                       fsType: FilesystemType.folder,
                                       pickText: 'Choose the download folder',
+                                      permissionText: 'You need permission to access this folder',
                                       folderIconColor: Colors.teal,
                                     );
-                                    _controllerFileChooser.text = path ?? downloadDirectory?.path ?? 'Select a folder';
+                                    _controllerFileChooser.text = path ?? downloadDirectory?.path ?? constants.directoryNotSelected;
                                   });
                                 },
                                 decoration: const InputDecoration(

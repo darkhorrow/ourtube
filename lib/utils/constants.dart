@@ -1,0 +1,1 @@
+const String directoryNotSelected = 'Select a folder';
