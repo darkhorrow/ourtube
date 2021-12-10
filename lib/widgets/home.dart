@@ -99,14 +99,14 @@ class _MyHomePageState extends State<MyHomePage> {
       _validationError = true;
       _showDownloadButton = false;
     });
-    _showToast(context, "The video does not exist. Is it written ok?");
+    _showToast(context, constants.videoDoesNotExist);
   }
 
   void _downloadVideo() {
     _appFiles.then((filesDirectory) => {
       _downloadDirectory.then((downloadDirectory) => {
         if(_controllerFileChooser.text == constants.directoryNotSelected) {
-          _showToast(context, "An invalid download folder has been selected"),
+          _showToast(context, constants.invalidDirectorySelected),
         } else {
           setState(() {
               _downloading = true;
@@ -203,8 +203,8 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         controller: _controller,
                         decoration: InputDecoration(
-                          labelText: 'Enter a YouTube URL',
-                          errorText: _validationError ? 'Not a valid YouTube URL' : null,
+                          labelText: constants.urlInputLabel,
+                          errorText: _validationError ? constants.invalidYoutubeUrl : null,
                         ),
                         onChanged: (String input) { _trimInput(input); },
                         autocorrect: false,
@@ -218,7 +218,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             Expanded(
                               child: SwitchListTile(
                                 value: _isAudio,
-                                title: Text(_isAudio ? 'Download as audio' : 'Download as video'),
+                                title: Text(_isAudio ? constants.downloadAudio : constants.downloadVideo),
                                 secondary: Icon(_isAudio ? Icons.audiotrack : Icons.video_collection),
                                 onChanged: !_downloading ? (value) { setState(() { _isAudio = value; }); } : null,
                               ),
@@ -227,7 +227,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ElevatedButton.icon(
                               onPressed: !_downloading ? () {  _downloadVideo(); } : null,
                               onLongPress: null,
-                              label: const Text('Download'),
+                              label: const Text(constants.downloadButtonText),
                               icon: _downloading ? const SizedBox(child: CircularProgressIndicator(color: Colors.white), height: 15, width: 15,) : const Icon(Icons.file_download),
                             ),
                           ],
@@ -236,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ElevatedButton.icon(
                               onPressed: !_downloading ? () { _searchVideo(); } : null,
                               onLongPress: null,
-                              label: const Text('Search'),
+                              label: const Text(constants.searchButtonText),
                               icon: const Icon(Icons.search),
                             ),
                           ]
@@ -254,20 +254,20 @@ class _MyHomePageState extends State<MyHomePage> {
                                   String? path;
                                   _downloadDirectory.then((downloadDirectory) async  {
                                     path = await FilesystemPicker.open(
-                                      title: 'Choose folder',
+                                      title: constants.filePickerTitle,
                                       context: context,
-                                      rootName: 'C:',
-                                      rootDirectory: Directory('C:\\'),
+                                      rootName: constants.filePickerRootName,
+                                      rootDirectory: Directory(constants.filePickerRootDirectory),
                                       fsType: FilesystemType.folder,
-                                      pickText: 'Choose the download folder',
-                                      permissionText: 'You need permission to access this folder',
+                                      pickText: constants.filePickerPickText,
+                                      permissionText: constants.filePickerPermissionText,
                                       folderIconColor: Colors.teal,
                                     );
                                     _controllerFileChooser.text = path ?? downloadDirectory?.path ?? constants.directoryNotSelected;
                                   });
                                 },
                                 decoration: const InputDecoration(
-                                  labelText: 'Download folder',
+                                  labelText: constants.downloadFolderInputLabel,
                                   suffixIcon: Icon(Icons.drive_file_move)
                                 ),
                               ),
