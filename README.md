@@ -4,4 +4,4 @@ OurTube is a software built in Flutter made with educational purposes that allow
 
 The application downloads and updated ytdl and ffmpeg for video-to-audio conversion and afterwards, an input allows to paste a URL that will be verified. If the format is correct and a valid video is found, the download may be done.
 
-Currently, the application will download the content in the 'Downloads' directory of the OS.
+The application will download the content in the 'Downloads' directory of the OS by default or in the specific directory set by the user.
